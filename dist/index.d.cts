@@ -1,21 +1,20 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import * as Y from "yjs";
+import { Awareness } from "y-protocols/awareness";
 
 //#region src/SupabaseProvider.d.ts
 type SupabaseProviderOptions = {
-  broadcastThrottleMs?: number;
-  /** Enable automatic reconnection on disconnect. Default: true */
-  autoReconnect?: boolean;
-  /** Maximum reconnection attempts. Default: Infinity */
-  maxReconnectAttempts?: number;
-  /** Initial reconnection delay in ms. Default: 1000 */
-  reconnectDelay?: number;
-  /** Maximum reconnection delay in ms. Default: 30000 */
-  maxReconnectDelay?: number;
+  broadcastThrottleMs?: number; /** Enable automatic reconnection on disconnect. Default: true */
+  autoReconnect?: boolean; /** Maximum reconnection attempts. Default: Infinity */
+  maxReconnectAttempts?: number; /** Initial reconnection delay in ms. Default: 1000 */
+  reconnectDelay?: number; /** Maximum reconnection delay in ms. Default: 30000 */
+  maxReconnectDelay?: number; /** Enable awareness for presence features. Pass true to create new instance, or pass existing Awareness */
+  awareness?: boolean | Awareness;
 };
 type Status = 'connecting' | 'connected' | 'disconnected';
 type ProviderEventMap = {
   message: (update: Uint8Array) => void;
+  awareness: (update: Uint8Array) => void;
   status: (status: Status) => void;
   connect: (provider: SupabaseProvider) => void;
   disconnect: (provider: SupabaseProvider) => void;
@@ -49,9 +48,11 @@ declare class SupabaseProvider {
   private options;
   private syncedPeers;
   private listeners;
+  private awareness;
   private reconnectAttempts;
   private reconnectTimeout;
   private shouldReconnect;
+  private boundBeforeUnload;
   constructor(channelName: string, doc: Y.Doc, supabase: SupabaseClient, options?: SupabaseProviderOptions);
   on<K extends keyof ProviderEventMap>(event: K, listener: ProviderEventMap[K]): this;
   off<K extends keyof ProviderEventMap>(event: K, listener: ProviderEventMap[K]): this;
@@ -61,6 +62,9 @@ declare class SupabaseProvider {
   private queueBroadcast;
   private handleDocUpdate;
   private handleRemoteUpdate;
+  private broadcastAwarenessUpdate;
+  private handleAwarenessUpdate;
+  private handleRemoteAwareness;
   /**
    * Sends our state vector to request missing updates from peers.
    */
@@ -89,6 +93,11 @@ declare class SupabaseProvider {
    * @returns The current status: 'connecting', 'connected', or 'disconnected'
    */
   getStatus(): Status;
+  /**
+   * Returns the Awareness instance if awareness was enabled.
+   * @returns The Awareness instance or null if awareness is disabled
+   */
+  getAwareness(): Awareness | null;
 }
 //#endregion
 export { SupabaseProvider, type SupabaseProviderOptions };

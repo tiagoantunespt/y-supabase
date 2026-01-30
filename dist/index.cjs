@@ -28,10 +28,12 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 let _supabase_supabase_js = require("@supabase/supabase-js");
 let yjs = require("yjs");
 yjs = __toESM(yjs);
+let y_protocols_awareness = require("y-protocols/awareness");
 
 //#region src/SupabaseProvider.ts
 const UPDATE_EVENT = "y-supabase-update";
 const STATE_VECTOR_EVENT = "y-supabase-state-vector";
+const AWARENESS_EVENT = "y-supabase-awareness";
 const encodeUpdate = (update) => {
 	let binary = "";
 	const chunkSize = 32768;
@@ -68,15 +70,26 @@ var SupabaseProvider = class {
 		this.pendingUpdates = [];
 		this.syncedPeers = /* @__PURE__ */ new Set();
 		this.listeners = /* @__PURE__ */ new Map();
+		this.awareness = null;
 		this.reconnectAttempts = 0;
 		this.reconnectTimeout = null;
 		this.shouldReconnect = true;
+		this.boundBeforeUnload = null;
 		this.channelName = channelName;
 		this.doc = doc;
 		this.supabase = supabase;
 		this.options = options;
 		this.userId = crypto.randomUUID();
+		if (options?.awareness) {
+			this.awareness = options.awareness instanceof y_protocols_awareness.Awareness ? options.awareness : new y_protocols_awareness.Awareness(doc);
+			this.handleAwarenessUpdate = this.handleAwarenessUpdate.bind(this);
+			this.awareness.on("update", this.handleAwarenessUpdate);
+		}
 		this.handleDocUpdate = this.handleDocUpdate.bind(this);
+		if (typeof window !== "undefined") {
+			this.boundBeforeUnload = () => this.destroy();
+			window.addEventListener("beforeunload", this.boundBeforeUnload);
+		}
 		this.connect();
 	}
 	on(event, listener) {
@@ -141,6 +154,40 @@ var SupabaseProvider = class {
 			this.emit("error", err instanceof Error ? err : /* @__PURE__ */ new Error("Failed to apply remote update"));
 		}
 	}
+	broadcastAwarenessUpdate(update) {
+		if (!this.channel) return;
+		const payload = {
+			update: encodeUpdate(update),
+			user: { id: this.userId },
+			timestamp: Date.now()
+		};
+		this.channel.send({
+			type: "broadcast",
+			event: AWARENESS_EVENT,
+			payload
+		});
+	}
+	handleAwarenessUpdate({ added, updated, removed }, origin) {
+		if (!this.awareness) return;
+		if (origin === "remote") return;
+		const update = (0, y_protocols_awareness.encodeAwarenessUpdate)(this.awareness, [
+			...added,
+			...updated,
+			...removed
+		]);
+		this.broadcastAwarenessUpdate(update);
+	}
+	handleRemoteAwareness(payload) {
+		if (!this.awareness) return;
+		if (payload.user.id === this.userId) return;
+		try {
+			const update = decodeUpdate(payload.update);
+			(0, y_protocols_awareness.applyAwarenessUpdate)(this.awareness, update, "remote");
+			this.emit("awareness", update);
+		} catch (err) {
+			this.emit("error", err instanceof Error ? err : /* @__PURE__ */ new Error("Failed to apply awareness update"));
+		}
+	}
 	/**
 	* Sends our state vector to request missing updates from peers.
 	*/
@@ -188,11 +235,17 @@ var SupabaseProvider = class {
 			this.handleStateVector(data.payload);
 		}).on("broadcast", { event: UPDATE_EVENT }, (data) => {
 			this.handleRemoteUpdate(data.payload);
+		}).on("broadcast", { event: AWARENESS_EVENT }, (data) => {
+			this.handleRemoteAwareness(data.payload);
 		}).subscribe((status, err) => {
 			if (status === _supabase_supabase_js.REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
 				this.setStatus("connected");
 				this.emit("connect", this);
 				this.reconnectAttempts = 0;
+				if (this.awareness) {
+					const update = (0, y_protocols_awareness.encodeAwarenessUpdate)(this.awareness, Array.from(this.awareness.getStates().keys()));
+					this.broadcastAwarenessUpdate(update);
+				}
 				this.sendStateVector();
 			} else if (status === _supabase_supabase_js.REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR) {
 				this.setStatus("disconnected");
@@ -244,7 +297,15 @@ var SupabaseProvider = class {
 			clearTimeout(this.reconnectTimeout);
 			this.reconnectTimeout = null;
 		}
+		if (this.boundBeforeUnload && typeof window !== "undefined") {
+			window.removeEventListener("beforeunload", this.boundBeforeUnload);
+			this.boundBeforeUnload = null;
+		}
 		this.doc.off("update", this.handleDocUpdate);
+		if (this.awareness) {
+			(0, y_protocols_awareness.removeAwarenessStates)(this.awareness, [this.doc.clientID], "local");
+			this.awareness.off("update", this.handleAwarenessUpdate);
+		}
 		if (this.channel) {
 			this.supabase.removeChannel(this.channel);
 			this.channel = null;
@@ -256,6 +317,13 @@ var SupabaseProvider = class {
 	*/
 	getStatus() {
 		return this.status;
+	}
+	/**
+	* Returns the Awareness instance if awareness was enabled.
+	* @returns The Awareness instance or null if awareness is disabled
+	*/
+	getAwareness() {
+		return this.awareness;
 	}
 };
 
