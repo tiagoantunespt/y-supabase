@@ -1,42 +1,11 @@
 {
   "name": "@supabase-community/y-supabase",
+  "type": "module",
   "version": "0.1.0",
   "description": "Supabase Realtime provider for Yjs",
-  "main": "dist/index.cjs",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.cts",
-  "type":"module",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.cts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
-    }
-  },
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
-  ],
-  "scripts": {
-    "build": "tsdown",
-    "dev": "tsdown --watch",
-    "lint": "eslint src --ext .ts",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "prepublishOnly": "npm run build",
-    "example:monaco": "npx vite examples/monaco"
-  },
-  "keywords": [
-    "yjs",
-    "supabase",
-    "realtime",
-    "collaboration"
-  ],
   "author": "Tiago Antunes <tiagoantunespt@gmail.com>",
   "license": "MIT",
+  "homepage": "https://github.com/supabase-community/y-supabase#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/supabase-community/y-supabase.git"
@@ -44,10 +13,21 @@
   "bugs": {
     "url": "https://github.com/supabase-community/y-supabase/issues"
   },
-  "homepage": "https://github.com/supabase-community/y-supabase#readme",
-  "peerDependencies": {
-    "@supabase/supabase-js": "^2.93.3",
-    "yjs": "^13.0.0"
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.mts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm run build",
+    "example:monaco": "npx vite examples/monaco"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",
@@ -66,6 +46,7 @@
     "vite": "^7.3.1",
     "vitest": "^4.0.18",
     "y-monaco": "^0.1.6",
-    "yjs": "^13.6.29"
+    "yjs": "^13.6.29",
+    "bumpp": "^10.3.2"
   }
 }

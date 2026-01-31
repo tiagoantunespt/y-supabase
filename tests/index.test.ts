@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import * as Y from 'yjs'
-import { SupabaseProvider } from './SupabaseProvider'
+import { SupabaseProvider } from '../src/SupabaseProvider'
 
 // Helper to encode Uint8Array to base64 (matches provider's encoding)
 const encodeUpdate = (update: Uint8Array) => {

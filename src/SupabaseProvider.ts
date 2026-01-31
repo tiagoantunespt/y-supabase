@@ -118,7 +118,6 @@ class SupabaseProvider {
 
     this.handleDocUpdate = this.handleDocUpdate.bind(this)
 
-    // Auto-cleanup on page close in browser environments
     if (typeof window !== 'undefined') {
       this.boundBeforeUnload = () => this.destroy()
       window.addEventListener('beforeunload', this.boundBeforeUnload)
